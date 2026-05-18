@@ -1,0 +1,5 @@
+{
+  "name": "nm-strava-sync",
+  "version": "1.0.0",
+  "description": "Strava sync backend for Norwegian Method treningsdagbok"
+}
