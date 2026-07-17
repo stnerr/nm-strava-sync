@@ -1,5 +1,7 @@
 {
-  "name": "nm-strava-sync",
-  "version": "1.0.0",
-  "type": "module"
+  "name": "strava-sync",
+  "version": "2.1.0",
+  "description": "Strava OAuth backend for Treningsdagbok (updated June 2026)",
+  "type": "module",
+  "engines": { "node": ">=18" }
 }
