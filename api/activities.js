@@ -94,28 +94,38 @@ export default async function handler(req, res) {
       parseInt(expires_at) || 0
     );
 
-    // Fetch activities – use new base URL, token in Authorization header
-    const afterTs = after
-      ? parseInt(after)
-      : Math.floor(Date.now() / 1000) - 60 * 60 * 24 * 90; // default 90 days
+    // Fetch activities – Strava returns newest first by default (no 'after' needed).
+    // Paginate to get up to ~200 recent activities.
+    const perPage = 100;
+    const maxPages = 3;
+    let allActivities = [];
+    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+      const stravaRes = await fetch(
+        `${STRAVA_API}/api/v3/athlete/activities?per_page=${perPage}&page=${pageNum}`,
+        {
+          headers: {
+            // Token in Authorization header (required from June 2027)
+            Authorization: `Bearer ${tokens.access_token}`,
+          },
+        }
+      );
 
-    const stravaRes = await fetch(
-      `${STRAVA_API}/api/v3/athlete/activities?after=${afterTs}&per_page=50`,
-      {
-        headers: {
-          // Token must be in header (not form params) – required from June 2027
-          Authorization: `Bearer ${tokens.access_token}`,
-        },
+      if (!stravaRes.ok) {
+        const body = await stravaRes.text();
+        console.error("Strava API error:", stravaRes.status, body);
+        if (pageNum === 1) {
+          return res.status(stravaRes.status).json({ error: "Strava API error", detail: body });
+        }
+        break; // stop paginating on error but keep what we have
       }
-    );
 
-    if (!stravaRes.ok) {
-      const body = await stravaRes.text();
-      console.error("Strava API error:", stravaRes.status, body);
-      return res.status(stravaRes.status).json({ error: "Strava API error", detail: body });
+      const pageActivities = await stravaRes.json();
+      if (!Array.isArray(pageActivities) || pageActivities.length === 0) break;
+      allActivities = allActivities.concat(pageActivities);
+      if (pageActivities.length < perPage) break; // last page reached
     }
 
-    const activities = await stravaRes.json();
+    const activities = allActivities;
 
     // Transform to app format
     // Use sport_type (new preferred field) with fallback to type (deprecated)
